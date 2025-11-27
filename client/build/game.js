@@ -14,11 +14,22 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+import { makeDraggable } from './draggable.js';
 var ArtGalleryGame;
 (function (ArtGalleryGame) {
     var p = {
         xPos: 100,
         yPos: 100
+    };
+    ArtGalleryGame.GamePhysics = {
+        default: 'matter',
+        matter: {
+            debug: {
+                showCollisions: true,
+                showBounds: true,
+                showInternalEdges: true
+            }
+        }
     };
     var GalleryGame = /** @class */ (function (_super) {
         __extends(GalleryGame, _super);
@@ -26,6 +37,8 @@ var ArtGalleryGame;
             var _this = _super.call(this, "GalleryGame") || this;
             _this.graphics = null;
             _this.polygons = null;
+            _this.width = 800;
+            _this.height = 600;
             return _this;
         }
         GalleryGame.prototype.drawPolygons = function (graphics) {
@@ -63,7 +76,7 @@ var ArtGalleryGame;
             if (irregularity < 0 || irregularity > 1)
                 throw new RangeError("Irregularity must be between 0 and 1");
             if (spikiness < 0 || spikiness > 1)
-                throw new RangeError("Irregularity must be between 0 and 1");
+                throw new RangeError("Spikiness must be between 0 and 1");
             irregularity *= 2 * Math.PI / numVertices;
             spikiness *= averageRadius;
             var angleSteps = this.randomAngleSteps(numVertices, irregularity);
@@ -81,15 +94,22 @@ var ArtGalleryGame;
             return points;
         };
         GalleryGame.prototype.create = function () {
+            var xOffset = this.width / 2;
+            var yOffset = this.height / 2;
             this.graphics = this.add.graphics();
             this.graphics.lineStyle(5, 0x0, 1.0);
             /* Initialize values for polygons */
-            var vertices = this.generatePolygon({ xPos: 250, yPos: 250 }, 100, 0.8, 0.6, 16);
-            this.graphics.beginPath();
-            for (var _i = 0, vertices_1 = vertices; _i < vertices_1.length; _i++) {
-                var point = vertices_1[_i];
-                this.graphics.lineTo(point.xPos, point.yPos);
+            //this.borders = this.physics.add.staticGroup();
+            var circle = this.add.circle(100, 100, 10, 0x00FFFF);
+            makeDraggable(circle, true);
+            var points = this.generatePolygon({ xPos: xOffset, yPos: yOffset }, 175, 0.8, 0.3, 16);
+            /* Ideal polygon :  */
+            this.graphics.lineStyle(2, 0xFF0000, 1.0);
+            for (var i = 0; i < points.length; i++) {
+                this.graphics.lineTo(points[i].xPos, points[i].yPos);
             }
+            var polygon = this.add.polygon(xOffset, yOffset, points.map(function (v) { return ({ x: v.xPos, y: v.yPos }); }), 0x008000, 0.5);
+            var bounds = polygon.getBounds();
             this.graphics.closePath();
             this.graphics.strokePath();
         };
@@ -99,8 +119,11 @@ var ArtGalleryGame;
 })(ArtGalleryGame || (ArtGalleryGame = {}));
 var game = new Phaser.Game({
     type: Phaser.AUTO,
+    dom: { createContainer: true },
+    parent: "game-wrapper",
     width: 800,
     height: 600,
     backgroundColor: 0xEDEADE,
+    physics: ArtGalleryGame.GamePhysics,
     scene: ArtGalleryGame.GalleryGame
 });
