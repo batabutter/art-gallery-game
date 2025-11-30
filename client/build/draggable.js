@@ -4,9 +4,8 @@ export function makeDraggable(gameObject, enableLogs) {
         if (enableLogs)
             console.debug(message);
     }
-    function startDrag() {
-        log("[makeDraggable:startDrag] invoked for game object: ".concat(gameObject.name));
-    }
-    gameObject.setInteractive();
-    gameObject.on(Phaser.Input.Events.POINTER_DOWN, startDrag);
+    gameObject.setInteractive({ draggable: true });
+    gameObject.on('drag', function (pointer) {
+        gameObject.setPosition(pointer.x, pointer.y);
+    });
 }

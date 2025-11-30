@@ -14,7 +14,6 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-import { makeDraggable } from './draggable.js';
 var ArtGalleryGame;
 (function (ArtGalleryGame) {
     var p = {
@@ -23,14 +22,11 @@ var ArtGalleryGame;
     };
     ArtGalleryGame.GamePhysics = {
         default: 'matter',
-        /*
-        arcade:{
-            debug: true,
-            debugShowBody: true,
-            debugBodyColor: 0x008000
-        }
-        */
         matter: {
+            gravity: {
+                x: 0,
+                y: 0,
+            },
             debug: {
                 showCollisions: false,
                 showInternalEdges: false
@@ -107,15 +103,13 @@ var ArtGalleryGame;
                 var y2 = points[i].yPos;
                 var dx = x2 - x1;
                 var dy = y2 - y1;
-                console.debug("points : (".concat(x1, ", ").concat(y1, "), (").concat(x2, ", ").concat(y2, ")"));
                 var len = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-                console.debug("Length : ".concat(len));
                 var angle = Math.atan(dy / dx);
                 var midPoint = {
                     xPos: (x2 + x1) / 2,
                     yPos: (y2 + y1) / 2
                 };
-                var linePhys = this.matter.add.rectangle(midPoint.xPos, midPoint.yPos, len, 1, { isStatic: true });
+                var linePhys = this.matter.add.rectangle(midPoint.xPos, midPoint.yPos, len, 2, { isStatic: true });
                 this.matter.body.setAngle(linePhys, angle);
                 body.push(linePhys);
             }
@@ -138,6 +132,9 @@ var ArtGalleryGame;
             }
         };
         GalleryGame.prototype.create = function () {
+            var _this = this;
+            var canDrag = this.matter.world.nextGroup();
+            this.matter.world.setBounds();
             var xOffset = this.width / 2;
             var yOffset = this.height / 2;
             this.graphics = this.add.graphics();
@@ -145,8 +142,27 @@ var ArtGalleryGame;
             /* Initialize values for polygons */
             this.graphics.beginPath();
             //this.borders = this.physics.add.staticGroup();
-            var circle = this.add.circle(100, 100, 10, 0x00FFFF);
-            makeDraggable(circle, true);
+            var circleGraphics = this.add.circle(100, 100, 10, 0x00FFFF);
+            this.matter.add.mouseSpring({
+                length: 0,
+                stiffness: 0.1,
+                damping: 0.2,
+            });
+            var circlePhys = this.matter.add.circle(circleGraphics.x, circleGraphics.y, circleGraphics.radius, {
+                isStatic: false,
+                restitution: .5,
+                frictionAir: 0.05,
+                collisionFilter: {
+                    // Guards can be dragged
+                    group: canDrag
+                }
+            });
+            circleGraphics.setInteractive({ draggable: true });
+            this.events.on('update', function () {
+                circleGraphics.x = circlePhys.position.x;
+                circleGraphics.y = circlePhys.position.y;
+                _this.matter.body.setVelocity(circlePhys, { x: 0, y: 0 });
+            });
             var points = this.generatePolygon({ xPos: xOffset, yPos: yOffset }, 175, 0.8, 0.3, 16);
             /* Ideal polygon :  */
             this.renderPolygon(this.graphics, points);
@@ -154,6 +170,8 @@ var ArtGalleryGame;
             this.drawDebugMarkers(points);
             this.graphics.closePath();
             this.graphics.strokePath();
+        };
+        GalleryGame.prototype.update = function (time, delta) {
         };
         return GalleryGame;
     }(Phaser.Scene));
@@ -169,3 +187,4 @@ var game = new Phaser.Game({
     physics: ArtGalleryGame.GamePhysics,
     scene: new ArtGalleryGame.GalleryGame(800, 600)
 });
+export {};

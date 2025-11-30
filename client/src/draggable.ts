@@ -1,18 +1,13 @@
 
 export function makeDraggable(gameObject: Phaser.GameObjects.Arc, enableLogs = false) {
 
-    function log(message) {
+    function log(message: string) {
         if (enableLogs)
             console.debug(message);
     }
 
-    function startDrag() {
-        log(`[makeDraggable:startDrag] invoked for game object: ${gameObject.name}`);
-
-    }
-
-    gameObject.setInteractive();
-
-    gameObject.on(Phaser.Input.Events.POINTER_DOWN, startDrag);
-
+    gameObject.setInteractive( { draggable: true });
+    gameObject.on('drag', (pointer) => {
+        gameObject.setPosition(pointer.x, pointer.y)
+    });
 }

@@ -21,15 +21,11 @@ namespace ArtGalleryGame {
 
     export const GamePhysics: Phaser.Types.Core.PhysicsConfig = {
         default: 'matter',
-        /*
-        arcade:{
-            debug: true,
-            debugShowBody: true,
-            debugBodyColor: 0x008000
-        }
-        */
-
         matter: {
+            gravity: {
+                x: 0,
+                y: 0,
+            },
             debug: {
                 showCollisions: false,
                 showInternalEdges: false
@@ -118,7 +114,7 @@ namespace ArtGalleryGame {
         }
 
         private addPolygonPhysics(points: point[]) {
-            const body:MatterJS.BodyType[] = [];
+            const body: MatterJS.BodyType[] = [];
             points.push(points[0]);
             for (var i = 1; i < points.length; i++) {
                 const x1 = points[i - 1].xPos;
@@ -129,12 +125,10 @@ namespace ArtGalleryGame {
                 const dx = x2 - x1;
                 const dy = y2 - y1;
 
-                console.debug(`points : (${x1}, ${y1}), (${x2}, ${y2})`);
                 const len = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-                console.debug(`Length : ${len}`);
                 const angle = Math.atan(dy / dx);
 
-                const midPoint:point = {
+                const midPoint: point = {
                     xPos: (x2 + x1) / 2,
                     yPos: (y2 + y1) / 2
                 }
@@ -143,7 +137,7 @@ namespace ArtGalleryGame {
                     midPoint.xPos,
                     midPoint.yPos,
                     len,
-                    1,
+                    2,
                     { isStatic: true });
                 this.matter.body.setAngle(linePhys, angle);
                 body.push(linePhys);
@@ -171,6 +165,9 @@ namespace ArtGalleryGame {
 
         create() {
 
+            var canDrag = this.matter.world.nextGroup();
+            this.matter.world.setBounds();
+
             const xOffset = this.width / 2;
             const yOffset = this.height / 2;
 
@@ -181,8 +178,37 @@ namespace ArtGalleryGame {
 
             //this.borders = this.physics.add.staticGroup();
 
-            var circle = this.add.circle(100, 100, 10, 0x00FFFF);
-            makeDraggable(circle, true);
+            var circleGraphics = this.add.circle(100, 100, 10, 0x00FFFF);
+            this.matter.add.mouseSpring(
+                {
+                    length: 0,
+                    stiffness: 0.1,
+                    damping: 0.2,
+                }
+            );
+            
+            const circlePhys = this.matter.add.circle(
+                circleGraphics.x, 
+                circleGraphics.y, 
+                circleGraphics.radius, 
+                { 
+                    isStatic: false,
+                    restitution: .5,
+                    frictionAir: 0.05, 
+                    collisionFilter: {
+                        // Guards can be dragged
+                        group: canDrag
+                    }
+                },
+                
+            );
+
+            circleGraphics.setInteractive( { draggable: true });
+            this.events.on('update', () => {
+                circleGraphics.x = circlePhys.position.x;
+                circleGraphics.y = circlePhys.position.y;
+                this.matter.body.setVelocity(circlePhys, {x: 0, y: 0});
+            })
 
             var points = this.generatePolygon({ xPos: xOffset, yPos: yOffset }, 175, 0.8, 0.3, 16);
 
@@ -194,6 +220,10 @@ namespace ArtGalleryGame {
 
             this.graphics.closePath();
             this.graphics.strokePath();
+        }
+
+        update(time: number, delta: number): void {
+            
         }
 
 
