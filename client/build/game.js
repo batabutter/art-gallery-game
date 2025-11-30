@@ -23,26 +23,30 @@ var ArtGalleryGame;
     };
     ArtGalleryGame.GamePhysics = {
         default: 'matter',
+        /*
+        arcade:{
+            debug: true,
+            debugShowBody: true,
+            debugBodyColor: 0x008000
+        }
+        */
         matter: {
             debug: {
-                showCollisions: true,
-                showBounds: true,
-                showInternalEdges: true
+                showCollisions: false,
+                showInternalEdges: false
             }
         }
     };
     var GalleryGame = /** @class */ (function (_super) {
         __extends(GalleryGame, _super);
-        function GalleryGame() {
+        function GalleryGame(width, height) {
             var _this = _super.call(this, "GalleryGame") || this;
             _this.graphics = null;
             _this.polygons = null;
-            _this.width = 800;
-            _this.height = 600;
+            _this.width = width;
+            _this.height = height;
             return _this;
         }
-        GalleryGame.prototype.drawPolygons = function (graphics) {
-        };
         GalleryGame.prototype.uniform = function (high, low) {
             return Math.random() * (high - low) + low;
         };
@@ -93,24 +97,28 @@ var ArtGalleryGame;
             }
             return points;
         };
-        GalleryGame.prototype.addPhysicsLine = function (point, xOffset, yOffset) {
-            // What the fuck
-            var line = this.add.line(xOffset, yOffset, 0, 0, point.xPos, point.yPos);
-        };
-        GalleryGame.prototype.drawPolygonBounds = function (points) {
-            var bounds = [];
-            if (points.length > 0) {
-                var start = points[0];
-                for (var i = 1; i < points.length; i++) {
-                    var line = this.add.line(0, 0, points[i - 1].xPos, points[i - 1].yPos, points[i].xPos, points[i].yPos, 0x000000).setOrigin(0, 0);
-                    bounds.push(line);
-                }
-                bounds.push(this.add.line(0, 0, points[points.length - 1].xPos, points[points.length - 1].yPos, start.xPos, start.yPos, 0x000000).setOrigin(0, 0));
+        GalleryGame.prototype.addPolygonPhysics = function (points) {
+            var body = [];
+            points.push(points[0]);
+            for (var i = 1; i < points.length; i++) {
+                var x1 = points[i - 1].xPos;
+                var y1 = points[i - 1].yPos;
+                var x2 = points[i].xPos;
+                var y2 = points[i].yPos;
+                var dx = x2 - x1;
+                var dy = y2 - y1;
+                console.debug("points : (".concat(x1, ", ").concat(y1, "), (").concat(x2, ", ").concat(y2, ")"));
+                var len = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+                console.debug("Length : ".concat(len));
+                var angle = Math.atan(dy / dx);
+                var midPoint = {
+                    xPos: (x2 + x1) / 2,
+                    yPos: (y2 + y1) / 2
+                };
+                var linePhys = this.matter.add.rectangle(midPoint.xPos, midPoint.yPos, len, 1, { isStatic: true });
+                this.matter.body.setAngle(linePhys, angle);
+                body.push(linePhys);
             }
-            else {
-                throw new RangeError("Points list must be greater than 0.");
-            }
-            return bounds;
         };
         GalleryGame.prototype.drawDebugMarkers = function (points) {
             for (var _i = 0, points_1 = points; _i < points_1.length; _i++) {
@@ -118,6 +126,15 @@ var ArtGalleryGame;
                 console.log("Drawing marker at: (".concat(p.xPos, ", ").concat(p.yPos, ")"));
                 var pointMarker = this.add.circle(p.xPos, p.yPos, 3, 0xffffff, 1);
                 pointMarker.setStrokeStyle(1, 0x000000);
+            }
+        };
+        GalleryGame.prototype.renderPolygon = function (graphics, points) {
+            graphics.lineStyle(2, 0xFF0000, 1.0);
+            if (points.length > 0) {
+                graphics.moveTo(points[0].xPos, points[0].yPos);
+                for (var i = 0; i < points.length; i++) {
+                    graphics.lineTo(points[i].xPos, points[i].yPos);
+                }
             }
         };
         GalleryGame.prototype.create = function () {
@@ -132,15 +149,8 @@ var ArtGalleryGame;
             makeDraggable(circle, true);
             var points = this.generatePolygon({ xPos: xOffset, yPos: yOffset }, 175, 0.8, 0.3, 16);
             /* Ideal polygon :  */
-            this.graphics.lineStyle(2, 0xFF0000, 1.0);
-            console.debug(points);
-            if (points.length > 0) {
-                this.graphics.moveTo(points[0].xPos, points[0].yPos);
-                for (var i = 0; i < points.length; i++) {
-                    this.graphics.lineTo(points[i].xPos, points[i].yPos);
-                }
-            }
-            var polygonBounds = this.drawPolygonBounds(points);
+            this.renderPolygon(this.graphics, points);
+            var polygonPhysics = this.addPolygonPhysics(points);
             this.drawDebugMarkers(points);
             this.graphics.closePath();
             this.graphics.strokePath();
@@ -157,5 +167,5 @@ var game = new Phaser.Game({
     height: 600,
     backgroundColor: 0xEDEADE,
     physics: ArtGalleryGame.GamePhysics,
-    scene: ArtGalleryGame.GalleryGame
+    scene: new ArtGalleryGame.GalleryGame(800, 600)
 });

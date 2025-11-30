@@ -1,7 +1,6 @@
 /// <reference path="../types/phaser.d.ts"/>
 
 import { makeDraggable } from './draggable.js';
-
 namespace ArtGalleryGame {
 
     interface point {
@@ -22,13 +21,21 @@ namespace ArtGalleryGame {
 
     export const GamePhysics: Phaser.Types.Core.PhysicsConfig = {
         default: 'matter',
+        /*
+        arcade:{
+            debug: true,
+            debugShowBody: true,
+            debugBodyColor: 0x008000
+        }
+        */
+
         matter: {
             debug: {
-                showCollisions: true,
-                showBounds: true,
-                showInternalEdges: true
+                showCollisions: false,
+                showInternalEdges: false
             }
         }
+
     }
 
 
@@ -40,14 +47,10 @@ namespace ArtGalleryGame {
         height: integer;
         borders: Phaser.Physics.Arcade.StaticGroup;
 
-        constructor() {
+        constructor(width, height) {
             super("GalleryGame");
-            this.width = 800;
-            this.height = 600;
-        }
-
-        drawPolygons(graphics: Phaser.GameObjects.Graphics) {
-
+            this.width = width;
+            this.height = height;
         }
 
         private uniform(high, low) {
@@ -114,33 +117,38 @@ namespace ArtGalleryGame {
             return points;
         }
 
-        private drawPolygonBounds(points: point[]) {
-            var bounds = [];
+        private addPolygonPhysics(points: point[]) {
+            const body:MatterJS.BodyType[] = [];
+            points.push(points[0]);
+            for (var i = 1; i < points.length; i++) {
+                const x1 = points[i - 1].xPos;
+                const y1 = points[i - 1].yPos;
+                const x2 = points[i].xPos;
+                const y2 = points[i].yPos;
 
-            if (points.length > 0) {
-                var start = points[0];
-                for (var i = 1; i < points.length; i++) {
-                    const line = this.add.line(
-                        0, 0,
-                        points[i - 1].xPos, points[i - 1].yPos,
-                        points[i].xPos, points[i].yPos,
-                        0x000000
-                    ).setOrigin(0, 0);
-                    bounds.push(line);
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+
+                console.debug(`points : (${x1}, ${y1}), (${x2}, ${y2})`);
+                const len = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+                console.debug(`Length : ${len}`);
+                const angle = Math.atan(dy / dx);
+
+                const midPoint:point = {
+                    xPos: (x2 + x1) / 2,
+                    yPos: (y2 + y1) / 2
                 }
-                bounds.push(
-                    this.add.line(
-                        0, 0,
-                        points[points.length-1].xPos, points[points.length-1].yPos,
-                        start.xPos, start.yPos,
-                        0x000000
-                    ).setOrigin(0,0)
-                );
-            } else {
-                throw new RangeError("Points list must be greater than 0.")
+
+                const linePhys = this.matter.add.rectangle(
+                    midPoint.xPos,
+                    midPoint.yPos,
+                    len,
+                    1,
+                    { isStatic: true });
+                this.matter.body.setAngle(linePhys, angle);
+                body.push(linePhys);
             }
 
-            return bounds;
         }
 
         private drawDebugMarkers(points: point[]) {
@@ -148,6 +156,16 @@ namespace ArtGalleryGame {
                 console.log(`Drawing marker at: (${p.xPos}, ${p.yPos})`);
                 const pointMarker = this.add.circle(p.xPos, p.yPos, 3, 0xffffff, 1);
                 pointMarker.setStrokeStyle(1, 0x000000);
+            }
+        }
+
+        private renderPolygon(graphics: Phaser.GameObjects.Graphics, points: point[]) {
+            graphics.lineStyle(2, 0xFF0000, 1.0);
+            if (points.length > 0) {
+                graphics.moveTo(points[0].xPos, points[0].yPos);
+                for (var i = 0; i < points.length; i++) {
+                    graphics.lineTo(points[i].xPos, points[i].yPos);
+                }
             }
         }
 
@@ -169,17 +187,9 @@ namespace ArtGalleryGame {
             var points = this.generatePolygon({ xPos: xOffset, yPos: yOffset }, 175, 0.8, 0.3, 16);
 
             /* Ideal polygon :  */
-            this.graphics.lineStyle(2, 0xFF0000, 1.0);
-            console.debug(points);
+            this.renderPolygon(this.graphics, points);
+            var polygonPhysics = this.addPolygonPhysics(points);
 
-            if (points.length > 0) {
-                this.graphics.moveTo(points[0].xPos, points[0].yPos);
-                for (var i = 0; i < points.length; i++) {
-                    this.graphics.lineTo(points[i].xPos, points[i].yPos);
-                }
-            }
-
-            var polygonBounds = this.drawPolygonBounds(points);
             this.drawDebugMarkers(points);
 
             this.graphics.closePath();
@@ -200,6 +210,6 @@ var game = new Phaser.Game(
         height: 600,
         backgroundColor: 0xEDEADE,
         physics: ArtGalleryGame.GamePhysics,
-        scene: ArtGalleryGame.GalleryGame
+        scene: new ArtGalleryGame.GalleryGame(800, 600)
     }
 );
